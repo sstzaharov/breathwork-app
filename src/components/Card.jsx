@@ -1,6 +1,7 @@
 import { useState } from "react";
 import GenArt from "./GenArt";
 import Dots from "./Dots";
+import { PlayIcon } from "./Icons";
 import { catLabel, ctxLabel } from "../data/practices";
 
 const Card = ({ p, i, onClick, onPlay }) => {
@@ -23,7 +24,7 @@ const Card = ({ p, i, onClick, onPlay }) => {
           </div>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", margin: 0, lineHeight: 1.45, fontStyle: "italic" }}>⚡ {p.science}</p>
         </div>
-        <div onClick={(e) => { e.stopPropagation(); onPlay(p); }} style={{ width: 48, height: 48, borderRadius: "50%", background: p.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#0A0A0F", flexShrink: 0, marginLeft: 14, marginTop: 6, boxShadow: `0 0 30px ${p.accentColor}30`, cursor: "pointer" }}>▶</div>
+        <div onClick={(e) => { e.stopPropagation(); onPlay(p); }} style={{ width: 48, height: 48, borderRadius: "50%", background: p.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#0A0A0F", flexShrink: 0, marginLeft: 14, marginTop: 6, boxShadow: `0 0 30px ${p.accentColor}30`, cursor: "pointer" }}><PlayIcon size={18} color="#0A0A0F" /></div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import GenArt from "./GenArt";
+import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
 import { catLabel } from "../data/practices";
 
 const PHASES = ["вдох", "задержка", "выдох", "задержка"];
@@ -104,7 +105,7 @@ const Player = ({ p, onClose }) => {
           <div style={{ fontSize: 21, fontWeight: 700, color: "#F5F5F5", fontFamily: "'Outfit',sans-serif" }}>{p.title}</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", marginTop: 4 }}>Стас · {p.duration}</div>
         </div>
-        <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+        <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon size={16} color="rgba(255,255,255,0.45)" /></button>
       </div>
 
       {/* Breathing circle — synced */}
@@ -148,7 +149,7 @@ const Player = ({ p, onClose }) => {
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 36 }}>
           <button onClick={() => setProgress(prev => Math.max(0, prev - (10/(p.durationSec||600))*100))} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>-10</button>
-          <button onClick={() => setPlaying(!playing)} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${p.accentColor}30`, background: `${p.accentColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? "⏸" : "▶"}</button>
+          <button onClick={() => setPlaying(!playing)} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${p.accentColor}30`, background: `${p.accentColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
           <button onClick={() => setProgress(prev => Math.min(100, prev + (10/(p.durationSec||600))*100))} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>+10</button>
         </div>
       </div>

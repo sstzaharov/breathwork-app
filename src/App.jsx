@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { catLabel } from "./data/practices";
 import { usePractices } from "./hooks/usePractices";
 import { upsertUser } from "./lib/user-service";
+import { PlayIcon } from "./components/Icons";
 import GenArt from "./components/GenArt";
 import Dots from "./components/Dots";
 import Card from "./components/Card";
@@ -29,6 +30,7 @@ export default function App() {
 
     if (tg) {
       tg.ready();
+      tg.expand();
       const user = tg.initDataUnsafe?.user;
       if (user) {
         upsertUser(user).then(u => {
@@ -82,7 +84,7 @@ export default function App() {
                 </div>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", fontStyle: "italic", lineHeight: 1.4 }}>⚡ {rec.science}</p>
               </div>
-              <div onClick={(e) => { e.stopPropagation(); setPlay(rec); }} style={{ width: 48, height: 48, borderRadius: "50%", background: rec.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#0A0A0F", flexShrink: 0, marginLeft: 14, marginTop: 10, boxShadow: `0 0 30px ${rec.accentColor}30`, cursor: "pointer" }}>▶</div>
+              <div onClick={(e) => { e.stopPropagation(); setPlay(rec); }} style={{ width: 48, height: 48, borderRadius: "50%", background: rec.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#0A0A0F", flexShrink: 0, marginLeft: 14, marginTop: 10, boxShadow: `0 0 30px ${rec.accentColor}30`, cursor: "pointer" }}><PlayIcon size={18} color="#0A0A0F" /></div>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import GenArt from "./GenArt";
 import Dots from "./Dots";
+import { PlayIcon } from "./Icons";
 import { catLabel, ctxLabel } from "../data/practices";
 
 const Detail = ({ p, onClose, onPlay }) => (
@@ -22,7 +23,7 @@ const Detail = ({ p, onClose, onPlay }) => (
         </div>
         <h2 style={{ fontSize: 27, fontWeight: 700, color: "#F5F5F5", margin: "0 0 16px", lineHeight: 1.2, fontFamily: "'Outfit',sans-serif" }}>{p.title}</h2>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <button onClick={onPlay} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", background: p.accentColor, color: "#0A0A0F", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 30px ${p.accentColor}30` }}>▶</button>
+          <button onClick={onPlay} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", background: p.accentColor, color: "#0A0A0F", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 30px ${p.accentColor}30` }}><PlayIcon size={22} color="#0A0A0F" /></button>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 24 }}>
           <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontFamily: "'JetBrains Mono',monospace" }}>{p.duration}</span>

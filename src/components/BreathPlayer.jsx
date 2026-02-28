@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import GenArt from "./GenArt";
+import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
 import { categories } from "../data/practices";
 import { haptic } from "../utils/telegram";
 
@@ -224,7 +225,7 @@ export default function BreathPlayer({ practice: p, onClose }) {
             justifyContent: "center",
           }}
         >
-          ✕
+          <CloseIcon size={16} color="rgba(255,255,255,0.45)" />
         </button>
       </div>
 
@@ -365,7 +366,7 @@ export default function BreathPlayer({ practice: p, onClose }) {
               justifyContent: "center",
             }}
           >
-            {playing ? "⏸" : "▶"}
+            {playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}
           </button>
           <button
             onClick={() => {
