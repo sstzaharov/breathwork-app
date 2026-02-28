@@ -1,96 +1,16 @@
-# Breathwork with Stas
+# React + Vite
 
-Breathwork мини-апп для IT-перформеров. Тёмный минимализм, генеративный арт, визуальный гайд дыхания.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Стек
+Currently, two official plugins are available:
 
-- **React 18** + **Vite 6**
-- **Telegram Mini App SDK** (опционально — работает и как обычный веб-апп)
-- **Cloudflare Pages** (деплой)
-- Canvas API для генеративного арта
-- Нет внешних UI-библиотек — всё кастомное
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Структура
+## React Compiler
 
-```
-src/
-├── App.jsx                    # Главный экран (каталог + рекомендация)
-├── main.jsx                   # Entry point
-├── styles.css                 # Глобальные стили и анимации
-├── components/
-│   ├── GenArt.jsx             # Генеративный арт (canvas)
-│   ├── IntensityDots.jsx      # Индикатор интенсивности
-│   ├── PracticeCard.jsx       # Карточка практики
-│   ├── PracticeDetail.jsx     # Детальный экран (bottom sheet)
-│   └── BreathPlayer.jsx       # Полноэкранный плеер с визуальным гайдом
-├── data/
-│   └── practices.js           # Контент: практики, категории, утилиты
-└── utils/
-    └── telegram.js            # Telegram WebApp API + шеринг
-```
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Локальная разработка
+## Expanding the ESLint configuration
 
-```bash
-npm install
-npm run dev
-```
-
-Откроется на `http://localhost:3000`
-
-## Деплой на Cloudflare Pages
-
-### Вариант 1: через CLI (рекомендуется)
-
-```bash
-npm install -g wrangler
-wrangler login
-npm run build
-wrangler pages deploy dist --project-name=breathwork-with-stas
-```
-
-### Вариант 2: через Claude Code
-
-```bash
-# В Claude Code просто:
-npm run deploy
-```
-
-### Вариант 3: через GitHub
-
-1. Пуш в GitHub
-2. В Cloudflare Dashboard → Pages → Create project → Connect to Git
-3. Build command: `npm run build`
-4. Output directory: `dist`
-
-## Подключение к Telegram Bot
-
-1. Создай бота через @BotFather
-2. `/newapp` → выбери бота → укажи URL с Cloudflare Pages
-3. Или `/setmenubutton` для кнопки в боте
-
-## Добавление аудио
-
-Когда аудио будет записано:
-1. Положи файлы в `public/audio/` (например `practice-1.mp3`)
-2. Обнови `audioUrl` в `src/data/practices.js`
-3. В `BreathPlayer.jsx` раскомментируй аудио-интеграцию
-
-## Что готово
-
-- [x] Каталог практик с фильтрами
-- [x] Рекомендация по времени суток
-- [x] Карточки с генеративным артом
-- [x] Детальный экран (bottom sheet)
-- [x] Визуальный гайд дыхания (таймер + фазы)
-- [x] Шеринг в Telegram
-- [x] Haptic feedback
-- [x] Адаптация под Telegram Mini App
-
-## Что добавить позже
-
-- [ ] Реальное аудио с голосом Стаса
-- [ ] Трекинг завершённых сессий
-- [ ] Привязка к якорям рутины
-- [ ] Профиль с историей
-- [ ] Оплата (Telegram Stars или Stripe)
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
