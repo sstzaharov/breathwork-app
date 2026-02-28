@@ -1,0 +1,10 @@
+{
+  "build": {
+    "command": "npm run build",
+    "cwd": ".",
+    "watch_dir": "src"
+  },
+  "deploy": {
+    "output_dir": "dist"
+  }
+}
