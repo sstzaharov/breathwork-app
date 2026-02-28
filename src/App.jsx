@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { practices, catLabel } from "./data/practices";
+import { useState, useEffect } from "react";
+import { catLabel } from "./data/practices";
+import { usePractices } from "./hooks/usePractices";
+import { upsertUser } from "./lib/user-service";
 import GenArt from "./components/GenArt";
 import Dots from "./components/Dots";
 import Card from "./components/Card";
@@ -14,9 +16,28 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) === "1"; } catch { return false; }
   });
+  const { practices } = usePractices();
+  const [currentUser, setCurrentUser] = useState(null);
   const [sel, setSel] = useState(null);
   const [play, setPlay] = useState(null);
   const [filt, setFilt] = useState("all");
+
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    console.log('TG WebApp:', tg);
+    console.log('TG user:', tg?.initDataUnsafe?.user);
+
+    if (tg) {
+      tg.ready();
+      const user = tg.initDataUnsafe?.user;
+      if (user) {
+        upsertUser(user).then(u => {
+          console.log('Upsert result:', u);
+          setCurrentUser(u);
+        });
+      }
+    }
+  }, []);
 
   const h = new Date().getHours();
   const tod = h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night";
