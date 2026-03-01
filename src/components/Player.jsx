@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import GenArt from "./GenArt";
 import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
 import { catLabel } from "../data/practices";
@@ -10,20 +10,24 @@ const RANGE = MAX_SCALE - MIN_SCALE;
 
 function getCircleScale(phaseIdx, phaseDuration, count) {
   if (phaseDuration === 0) return phaseIdx <= 1 ? MAX_SCALE : MIN_SCALE;
-  // progress: 0 at phase start → 1 at phase end
   const progress = (phaseDuration - count) / phaseDuration;
   switch (phaseIdx) {
-    case 0: return MIN_SCALE + progress * RANGE; // вдох: expand
-    case 1: return MAX_SCALE;                     // задержка: hold big
-    case 2: return MAX_SCALE - progress * RANGE;  // выдох: shrink
-    case 3: return MIN_SCALE;                     // задержка: hold small
+    case 0: return MIN_SCALE + progress * RANGE;
+    case 1: return MAX_SCALE;
+    case 2: return MAX_SCALE - progress * RANGE;
+    case 3: return MIN_SCALE;
     default: return 1;
   }
 }
 
 const Player = ({ p, onClose }) => {
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [audioReady, setAudioReady] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+  const audioRef = useRef(null);
+  const hasAudio = !!p.audioUrl;
+
   const pattern = p.pattern || [4, 4, 4, 4];
   const hasPattern = pattern.some(v => v > 0);
   const initPhase = () => { let i = 0; while (pattern[i] === 0 && i < 4) i++; return i; };
@@ -37,6 +41,117 @@ const Player = ({ p, onClose }) => {
     while (pattern[next] === 0 && safety < 4) { next = (next + 1) % 4; safety++; }
     return next;
   }, [pattern]);
+
+  // --- Audio setup ---
+  useEffect(() => {
+    if (!hasAudio) {
+      // Нет аудио — автоплей анимации как раньше
+      setPlaying(true);
+      return;
+    }
+
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = p.audioUrl;
+    audioRef.current = audio;
+
+    const onCanPlay = () => {
+      setAudioReady(true);
+      // Автоплей после загрузки
+      audio.play().then(() => {
+        setPlaying(true);
+      }).catch((err) => {
+        console.warn("Autoplay blocked:", err);
+        // На iOS/Telegram autoplay может быть заблокирован — ждём нажатия
+        setPlaying(false);
+      });
+    };
+
+    const onError = (e) => {
+      console.error("Audio error:", e);
+      setAudioError(true);
+      // Fallback: запускаем анимацию без звука
+      setPlaying(true);
+    };
+
+    const onEnded = () => {
+      setPlaying(false);
+      setProgress(100);
+    };
+
+    audio.addEventListener("canplaythrough", onCanPlay);
+    audio.addEventListener("error", onError);
+    audio.addEventListener("ended", onEnded);
+
+    return () => {
+      audio.removeEventListener("canplaythrough", onCanPlay);
+      audio.removeEventListener("error", onError);
+      audio.removeEventListener("ended", onEnded);
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
+    };
+  }, [hasAudio, p.audioUrl]);
+
+  // --- Sync progress with audio ---
+  useEffect(() => {
+    if (!hasAudio || !audioRef.current) return;
+    const audio = audioRef.current;
+
+    const onTimeUpdate = () => {
+      if (audio.duration && audio.duration > 0) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+      }
+    };
+
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    return () => audio.removeEventListener("timeupdate", onTimeUpdate);
+  }, [hasAudio, audioReady]);
+
+  // --- Play/Pause sync ---
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (hasAudio && audio) {
+      if (playing) {
+        audio.pause();
+        setPlaying(false);
+      } else {
+        audio.play().then(() => setPlaying(true)).catch(console.warn);
+      }
+    } else {
+      setPlaying(prev => !prev);
+    }
+  }, [hasAudio, playing]);
+
+  // --- Seek ---
+  const seek = useCallback((deltaSec) => {
+    const audio = audioRef.current;
+    if (hasAudio && audio && audio.duration) {
+      audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + deltaSec));
+    } else {
+      const total = p.durationSec || 600;
+      setProgress(prev => Math.max(0, Math.min(100, prev + (deltaSec / total) * 100)));
+    }
+  }, [hasAudio, p.durationSec]);
+
+  const seekToProgress = useCallback((e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const pct = ((e.clientX - r.left) / r.width) * 100;
+    const audio = audioRef.current;
+    if (hasAudio && audio && audio.duration) {
+      audio.currentTime = (pct / 100) * audio.duration;
+    } else {
+      setProgress(pct);
+    }
+  }, [hasAudio]);
+
+  // --- Close handler: stop audio ---
+  const handleClose = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    onClose();
+  }, [onClose]);
 
   // Breathing cycle — 1s ticks
   useEffect(() => {
@@ -57,25 +172,35 @@ const Player = ({ p, onClose }) => {
     return () => clearInterval(iv);
   }, [playing, hasPattern, pattern, nextPhase]);
 
-  // Session progress
+  // Session progress (only when NO audio — fallback timer)
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || hasAudio) return;
     const total = p.durationSec || 600;
     const iv = setInterval(() => {
       setProgress(prev => prev >= 100 ? 100 : prev + (100 / total));
     }, 1000);
     return () => clearInterval(iv);
-  }, [playing, p.durationSec]);
+  }, [playing, hasAudio, p.durationSec]);
 
-  const elapsed = Math.floor((progress / 100) * (p.durationSec || 600));
-  const mins = Math.floor(elapsed / 60);
-  const secs = elapsed % 60;
-  const timeStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+  // --- Computed time display ---
+  const getTimeDisplay = () => {
+    const audio = audioRef.current;
+    if (hasAudio && audio && audio.duration > 0) {
+      const cur = Math.floor(audio.currentTime);
+      const dur = Math.floor(audio.duration);
+      const fmt = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+      return { elapsed: fmt(cur), total: fmt(dur) };
+    }
+    const total = p.durationSec || 600;
+    const elapsed = Math.floor((progress / 100) * total);
+    const fmt = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+    return { elapsed: fmt(elapsed), total: p.duration };
+  };
+  const time = getTimeDisplay();
 
   const phaseName = PHASES[phaseIdx];
   const phaseDuration = pattern[phaseIdx];
 
-  // Circle scale: JS-driven when pattern exists, CSS fallback otherwise
   const circleScale = hasPattern ? getCircleScale(phaseIdx, phaseDuration, count) : 1;
   const glowOpacity = hasPattern ? 0.25 + ((circleScale - MIN_SCALE) / RANGE) * 0.45 : undefined;
   const circleOpacity = hasPattern ? 0.6 + ((circleScale - MIN_SCALE) / RANGE) * 0.4 : undefined;
@@ -105,8 +230,15 @@ const Player = ({ p, onClose }) => {
           <div style={{ fontSize: 21, fontWeight: 700, color: "#F5F5F5", fontFamily: "'Outfit',sans-serif" }}>{p.title}</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", marginTop: 4 }}>Стас · {p.duration}</div>
         </div>
-        <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon size={16} color="rgba(255,255,255,0.45)" /></button>
+        <button onClick={handleClose} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon size={16} color="rgba(255,255,255,0.45)" /></button>
       </div>
+
+      {/* Loading indicator */}
+      {hasAudio && !audioReady && !audioError && (
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10, fontSize: 13, color: "rgba(255,255,255,0.35)", fontFamily: "'JetBrains Mono',monospace" }}>
+          загрузка...
+        </div>
+      )}
 
       {/* Breathing circle — synced */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
@@ -139,18 +271,18 @@ const Player = ({ p, onClose }) => {
       {/* Controls */}
       <div style={{ padding: "0 24px 56px", position: "relative", zIndex: 1 }}>
         <div style={{ marginBottom: 24 }}>
-          <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden", cursor: "pointer" }} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setProgress(((e.clientX-r.left)/r.width)*100); }}>
+          <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden", cursor: "pointer" }} onClick={seekToProgress}>
             <div style={{ width: `${progress}%`, height: "100%", background: p.accentColor, borderRadius: 2, transition: "width 0.2s" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.22)", fontFamily: "'JetBrains Mono',monospace" }}>
-            <span>{timeStr}</span>
-            <span>{p.duration}</span>
+            <span>{time.elapsed}</span>
+            <span>{time.total}</span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 36 }}>
-          <button onClick={() => setProgress(prev => Math.max(0, prev - (10/(p.durationSec||600))*100))} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>-10</button>
-          <button onClick={() => setPlaying(!playing)} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${p.accentColor}30`, background: `${p.accentColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
-          <button onClick={() => setProgress(prev => Math.min(100, prev + (10/(p.durationSec||600))*100))} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>+10</button>
+          <button onClick={() => seek(-10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>-10</button>
+          <button onClick={togglePlay} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${p.accentColor}30`, background: `${p.accentColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
+          <button onClick={() => seek(10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>+10</button>
         </div>
       </div>
     </div>
