@@ -11,28 +11,11 @@ const PhaseDots = ({ phases, phaseIndex, accentColor = "#4ADE80" }) => {
         const isActive = i === phaseIndex;
         const isShort = duration < 1;
 
-        if (isShort) {
-          return (
-            <div
-              key={i}
-              style={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                background: isActive ? accentColor : accentColor + "25",
-                transition: "background 0.3s",
-              }}
-            />
-          );
-        }
-
-        // Width proportional to duration, clamped between 8 and 40
-        const w = Math.max(8, Math.min(40, duration * 6));
         return (
           <div
             key={i}
             style={{
-              width: w,
+              width: isShort ? 8 : 22,
               height: 6,
               borderRadius: 3,
               background: isActive ? accentColor : accentColor + "25",

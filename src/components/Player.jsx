@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import GenArt from "./GenArt";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
 import { useBreathTimeline } from "../hooks/useBreathTimeline";
 import BreathCircle from "./BreathCircle";
@@ -8,6 +7,9 @@ import { catLabel } from "../data/practices";
 
 const MIN_SCALE = 0.78;
 const RANGE = 1.18 - MIN_SCALE;
+const HOLD_COLOR = "#FB923C";
+
+const SEGMENT_LABELS = { pulse: "интро", sequence: "дыхание", hold: "задержка", cycle: "дыхание" };
 
 const Player = ({ p, onClose }) => {
   const [playing, setPlaying] = useState(false);
@@ -168,19 +170,27 @@ const Player = ({ p, onClose }) => {
   };
   const time = getTimeDisplay();
 
+  const isHold = breath.segmentType === "hold";
+  const activeColor = isHold ? HOLD_COLOR : p.accentColor;
   const glowOpacity = 0.25 + ((breath.scale - MIN_SCALE) / RANGE) * 0.45;
+  const showCount = breath.count > 0 && (breath.segmentType === "cycle" || breath.segmentType === "hold");
+
+  // Timeline segments for the segment bar (only for new timeline format, not single-cycle)
+  const bp = p.breathPattern || p.pattern;
+  const timeline = useMemo(() => {
+    if (!bp || Array.isArray(bp)) return null; // legacy format — no segment bar
+    if (bp.timeline && bp.timeline.length > 1) return bp.timeline;
+    return null;
+  }, [bp]);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#060608", display: "flex", flexDirection: "column", animation: "fadeIn 0.5s ease", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, opacity: 0.45 }}>
-        <GenArt type={p.genType} color={p.color} accent={p.accentColor} w={430} h={900} seed={p.id*31+11} />
-      </div>
 
       {/* Background glow — synced */}
       <div style={{
         position: "absolute", top: "35%", left: "50%",
         width: 350, height: 350, borderRadius: "50%",
-        background: `radial-gradient(circle,${p.accentColor}16,transparent 70%)`,
+        background: `radial-gradient(circle,${activeColor}16,transparent 70%)`,
         filter: "blur(50px)",
         transform: `translate(-50%,-50%) scale(${breath.scale})`,
         opacity: glowOpacity,
@@ -190,7 +200,7 @@ const Player = ({ p, onClose }) => {
       {/* Header */}
       <div style={{ padding: "56px 24px 0", position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 12, color: p.accentColor, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6, opacity: 0.7 }}>{catLabel[p.category]}</div>
+          <div style={{ fontSize: 12, color: activeColor, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6, opacity: 0.7 }}>{catLabel[p.category]}</div>
           <div style={{ fontSize: 21, fontWeight: 700, color: "#F5F5F5", fontFamily: "'Outfit',sans-serif" }}>{p.title}</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", marginTop: 4 }}>Стас · {p.duration}</div>
         </div>
@@ -207,23 +217,37 @@ const Player = ({ p, onClose }) => {
       {/* Breathing circle — timeline-driven */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
         <div style={{ position: "relative", width: 160, height: 160, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <BreathCircle scale={breath.scale} color={p.color} accentColor={p.accentColor} size={160} />
+          <BreathCircle scale={breath.scale} color={p.color} accentColor={activeColor} size={160} />
           <div style={{ position: "absolute", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
-            {breath.count > 0 && (
+            {showCount && (
               <span key={breath.count} style={{ fontSize: 42, fontWeight: 300, color: "rgba(255,255,255,0.75)", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, animation: "countPop 0.3s ease-out" }}>{breath.count}</span>
             )}
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: breath.count > 0 ? 6 : 0, transition: "opacity 0.3s" }}>{breath.label}</span>
+            <span style={{ fontSize: 11, color: activeColor, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: showCount ? 6 : 0, transition: "color 0.3s, opacity 0.3s", opacity: 0.85 }}>{breath.label}</span>
           </div>
         </div>
 
-        <PhaseDots phases={breath.phases} phaseIndex={breath.phaseIndex} accentColor={p.accentColor} />
+        <PhaseDots phases={breath.phases} phaseIndex={breath.phaseIndex} accentColor={activeColor} />
       </div>
 
       {/* Controls */}
       <div style={{ padding: "0 24px 56px", position: "relative", zIndex: 1 }}>
+        {/* Timeline segment bar */}
+        {timeline && (
+          <div style={{ display: "flex", gap: 3, marginBottom: 12 }}>
+            {timeline.map((seg, i) => {
+              const isActiveSeg = currentTime >= seg.start && (i === timeline.length - 1 || currentTime < timeline[i + 1].start);
+              return (
+                <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ height: 3, borderRadius: 2, background: isActiveSeg ? activeColor : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
+                  <div style={{ fontSize: 8, color: isActiveSeg ? activeColor : "rgba(255,255,255,0.2)", marginTop: 4, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.05em", textTransform: "uppercase", transition: "color 0.3s" }}>{seg.label || SEGMENT_LABELS[seg.type] || ""}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div style={{ marginBottom: 24 }}>
           <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden", cursor: "pointer" }} onClick={seekToProgress}>
-            <div style={{ width: `${progress}%`, height: "100%", background: p.accentColor, borderRadius: 2, transition: "width 0.2s" }} />
+            <div style={{ width: `${progress}%`, height: "100%", background: activeColor, borderRadius: 2, transition: "width 0.2s" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.22)", fontFamily: "'JetBrains Mono',monospace" }}>
             <span>{time.elapsed}</span>
@@ -232,7 +256,7 @@ const Player = ({ p, onClose }) => {
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 36 }}>
           <button onClick={() => seek(-10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>-10</button>
-          <button onClick={togglePlay} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${p.accentColor}30`, background: `${p.accentColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
+          <button onClick={togglePlay} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${activeColor}30`, background: `${activeColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
           <button onClick={() => seek(10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>+10</button>
         </div>
       </div>
