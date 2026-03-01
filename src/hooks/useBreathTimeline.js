@@ -85,9 +85,7 @@ function calcCycle(seg, time) {
     default: scale = 1;
   }
 
-  const rawLabel = phases[phaseIdx];
-  const label = (phaseDuration >= 2 && (phaseIdx === 0 || phaseIdx === 2))
-    ? "глубокий " + rawLabel : rawLabel;
+  const label = phases[phaseIdx];
 
   return {
     scale,
@@ -156,9 +154,7 @@ function calcSequence(seg, time) {
     scale = 1;
   }
 
-  const rawLabel = PHASE_LABELS[action] || action;
-  const label = (activePhase.duration >= 1 && (action === "inhale" || action === "exhale"))
-    ? "глубокий " + rawLabel : rawLabel;
+  const label = activePhase.label || PHASE_LABELS[action] || action;
 
   return {
     scale,

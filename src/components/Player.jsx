@@ -3,13 +3,10 @@ import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
 import { useBreathTimeline } from "../hooks/useBreathTimeline";
 import BreathCircle from "./BreathCircle";
 import PhaseDots from "./PhaseDots";
+import AnimatedGenArt from "./AnimatedGenArt";
 import { catLabel } from "../data/practices";
 
-const MIN_SCALE = 0.78;
-const RANGE = 1.18 - MIN_SCALE;
 const HOLD_COLOR = "#FB923C";
-
-const SEGMENT_LABELS = { pulse: "интро", sequence: "дыхание", hold: "задержка", cycle: "дыхание" };
 
 const Player = ({ p, onClose }) => {
   const [playing, setPlaying] = useState(false);
@@ -20,13 +17,37 @@ const Player = ({ p, onClose }) => {
   const hasAudio = !!p.audioUrl;
   const [currentTime, setCurrentTime] = useState(0);
 
+  // rAF ticker — updates animTime EVERY FRAME for AnimatedGenArt (like prototype's main App)
+  const rafRef = useRef(null);
+  const startRef = useRef(null);
+  const offsetRef = useRef(0);
+  const [animTime, setAnimTime] = useState(0);
+
+  useEffect(() => {
+    if (!playing) {
+      cancelAnimationFrame(rafRef.current);
+      return;
+    }
+    startRef.current = performance.now();
+    const tick = (now) => {
+      if (hasAudio && audioRef.current && audioRef.current.duration > 0) {
+        setAnimTime(audioRef.current.currentTime);
+      } else {
+        const elapsed = offsetRef.current + (now - startRef.current) / 1000;
+        setAnimTime(elapsed);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing, hasAudio]);
+
   // Timeline-driven breathing visualization
   const breath = useBreathTimeline(p.breathPattern || p.pattern, currentTime);
 
-  // --- Audio setup ---
+  // --- Audio setup (NOT TOUCHED) ---
   useEffect(() => {
     if (!hasAudio) {
-      // Нет аудио — автоплей анимации как раньше
       setPlaying(true);
       return;
     }
@@ -38,12 +59,10 @@ const Player = ({ p, onClose }) => {
 
     const onCanPlay = () => {
       setAudioReady(true);
-      // Автоплей после загрузки
       audio.play().then(() => {
         setPlaying(true);
       }).catch((err) => {
         console.warn("Autoplay blocked:", err);
-        // На iOS/Telegram autoplay может быть заблокирован — ждём нажатия
         setPlaying(false);
       });
     };
@@ -51,7 +70,6 @@ const Player = ({ p, onClose }) => {
     const onError = (e) => {
       console.error("Audio error:", e);
       setAudioError(true);
-      // Fallback: запускаем анимацию без звука
       setPlaying(true);
     };
 
@@ -74,7 +92,7 @@ const Player = ({ p, onClose }) => {
     };
   }, [hasAudio, p.audioUrl]);
 
-  // --- Sync progress with audio ---
+  // --- Sync progress with audio (NOT TOUCHED) ---
   useEffect(() => {
     if (!hasAudio || !audioRef.current) return;
     const audio = audioRef.current;
@@ -90,7 +108,7 @@ const Player = ({ p, onClose }) => {
     return () => audio.removeEventListener("timeupdate", onTimeUpdate);
   }, [hasAudio, audioReady]);
 
-  // --- Play/Pause sync ---
+  // --- Play/Pause sync (NOT TOUCHED) ---
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (hasAudio && audio) {
@@ -101,11 +119,12 @@ const Player = ({ p, onClose }) => {
         audio.play().then(() => setPlaying(true)).catch(console.warn);
       }
     } else {
+      if (playing) offsetRef.current = animTime;
       setPlaying(prev => !prev);
     }
-  }, [hasAudio, playing]);
+  }, [hasAudio, playing, animTime]);
 
-  // --- Seek ---
+  // --- Seek (NOT TOUCHED) ---
   const seek = useCallback((deltaSec) => {
     const audio = audioRef.current;
     if (hasAudio && audio && audio.duration) {
@@ -127,7 +146,7 @@ const Player = ({ p, onClose }) => {
     }
   }, [hasAudio]);
 
-  // --- Close handler: stop audio ---
+  // --- Close handler (NOT TOUCHED) ---
   const handleClose = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -135,7 +154,7 @@ const Player = ({ p, onClose }) => {
     onClose();
   }, [onClose]);
 
-  // currentTime ticker (when no audio — fallback timer)
+  // currentTime ticker — fallback when no audio (NOT TOUCHED)
   useEffect(() => {
     if (!playing || hasAudio) return;
     const iv = setInterval(() => {
@@ -144,7 +163,7 @@ const Player = ({ p, onClose }) => {
     return () => clearInterval(iv);
   }, [playing, hasAudio]);
 
-  // Session progress (only when NO audio — fallback timer)
+  // Session progress — fallback when no audio (NOT TOUCHED)
   useEffect(() => {
     if (!playing || hasAudio) return;
     const total = p.durationSec || 600;
@@ -154,7 +173,7 @@ const Player = ({ p, onClose }) => {
     return () => clearInterval(iv);
   }, [playing, hasAudio, p.durationSec]);
 
-  // --- Computed time display ---
+  // --- Computed time display (NOT TOUCHED) ---
   const getTimeDisplay = () => {
     const audio = audioRef.current;
     if (hasAudio && audio && audio.duration > 0) {
@@ -170,37 +189,37 @@ const Player = ({ p, onClose }) => {
   };
   const time = getTimeDisplay();
 
+  // --- Visual state ---
   const isHold = breath.segmentType === "hold";
-  const activeColor = isHold ? HOLD_COLOR : p.accentColor;
-  const glowOpacity = 0.25 + ((breath.scale - MIN_SCALE) / RANGE) * 0.45;
-  const showCount = breath.count > 0 && (breath.segmentType === "cycle" || breath.segmentType === "hold");
+  const accentHex = isHold ? HOLD_COLOR : p.accentColor;
 
-  // Timeline segments for the segment bar (only for new timeline format, not single-cycle)
+  // Timeline segments (only for new timeline format with >1 segments)
   const bp = p.breathPattern || p.pattern;
   const timeline = useMemo(() => {
-    if (!bp || Array.isArray(bp)) return null; // legacy format — no segment bar
+    if (!bp || Array.isArray(bp)) return null;
     if (bp.timeline && bp.timeline.length > 1) return bp.timeline;
     return null;
   }, [bp]);
 
+  const totalDuration = useMemo(() => {
+    if (hasAudio && audioRef.current && audioRef.current.duration > 0) return audioRef.current.duration;
+    return p.durationSec || 600;
+  }, [hasAudio, p.durationSec]);
+
+  // ─── JSX layout copied from prototype ───
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#060608", display: "flex", flexDirection: "column", animation: "fadeIn 0.5s ease", overflow: "hidden" }}>
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200, background: "#060608",
+      display: "flex", flexDirection: "column", animation: "fadeIn 0.5s ease",
+    }}>
 
-      {/* Background glow — synced */}
-      <div style={{
-        position: "absolute", top: "35%", left: "50%",
-        width: 350, height: 350, borderRadius: "50%",
-        background: `radial-gradient(circle,${activeColor}16,transparent 70%)`,
-        filter: "blur(50px)",
-        transform: `translate(-50%,-50%) scale(${breath.scale})`,
-        opacity: glowOpacity,
-        transition: "transform 0.15s linear, opacity 0.15s linear",
-      }} />
+      {/* Fullscreen gen art background — prototype AnimatedGenArt */}
+      <AnimatedGenArt scale={breath.scale} time={animTime} accent={accentHex} />
 
-      {/* Header */}
-      <div style={{ padding: "56px 24px 0", position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      {/* Header — zIndex: 3 */}
+      <div style={{ padding: "56px 24px 0", position: "relative", zIndex: 3, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 12, color: activeColor, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6, opacity: 0.7 }}>{catLabel[p.category]}</div>
+          <div style={{ fontSize: 12, color: accentHex, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6, opacity: 0.7 }}>{catLabel[p.category]}</div>
           <div style={{ fontSize: 21, fontWeight: 700, color: "#F5F5F5", fontFamily: "'Outfit',sans-serif" }}>{p.title}</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", marginTop: 4 }}>Стас · {p.duration}</div>
         </div>
@@ -214,49 +233,87 @@ const Player = ({ p, onClose }) => {
         </div>
       )}
 
-      {/* Breathing circle — timeline-driven */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-        <div style={{ position: "relative", width: 160, height: 160, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <BreathCircle scale={breath.scale} color={p.color} accentColor={activeColor} size={160} />
-          <div style={{ position: "absolute", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
-            {showCount && (
-              <span key={breath.count} style={{ fontSize: 42, fontWeight: 300, color: "rgba(255,255,255,0.75)", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, animation: "countPop 0.3s ease-out" }}>{breath.count}</span>
-            )}
-            <span style={{ fontSize: 11, color: activeColor, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: showCount ? 6 : 0, transition: "color 0.3s, opacity 0.3s", opacity: 0.85 }}>{breath.label}</span>
+      {/* Circle area — layout from prototype */}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", minHeight: 340, position: "relative", width: "100%",
+      }}>
+        {/* Breath circle — zIndex: 2 */}
+        <BreathCircle scale={breath.scale} accentColor={accentHex} size={250} />
+
+        {/* Hold countdown — absolute center of circle, like prototype */}
+        {isHold && breath.count > 0 && (
+          <div style={{
+            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -55%)",
+            fontSize: 42, fontWeight: 700, color: "rgba(251, 146, 60, 0.7)",
+            fontFamily: "'JetBrains Mono',monospace", zIndex: 3,
+          }}>
+            {breath.count}
           </div>
+        )}
+
+        {/* Phase label — BELOW circle, marginTop: -16, like prototype */}
+        <div style={{
+          marginTop: -16, minHeight: 24, position: "relative", zIndex: 3,
+          fontSize: 14, fontWeight: 500, letterSpacing: "0.08em",
+          color: isHold ? "rgba(251, 146, 60, 0.7)" : "rgba(74, 222, 128, 0.65)",
+          fontFamily: "'JetBrains Mono',monospace",
+          transition: "color 0.3s", textAlign: "center",
+        }}>
+          {isHold ? "задержка" : (breath.label || "")}
         </div>
 
-        <PhaseDots phases={breath.phases} phaseIndex={breath.phaseIndex} accentColor={activeColor} />
+        {/* Phase dots — below label */}
+        <div style={{ marginTop: 12, minHeight: 12, position: "relative", zIndex: 3 }}>
+          <PhaseDots phases={breath.phases} phaseIndex={breath.phaseIndex} />
+        </div>
       </div>
 
-      {/* Controls */}
-      <div style={{ padding: "0 24px 56px", position: "relative", zIndex: 1 }}>
-        {/* Timeline segment bar */}
+      {/* Controls — zIndex: 3 */}
+      <div style={{ padding: "0 24px 56px", position: "relative", zIndex: 3 }}>
+        {/* Timeline segment bar — like prototype TimelineBar, only for new timeline format */}
         {timeline && (
-          <div style={{ display: "flex", gap: 3, marginBottom: 12 }}>
+          <div style={{ position: "relative", height: 24, marginBottom: 4 }}>
             {timeline.map((seg, i) => {
-              const isActiveSeg = currentTime >= seg.start && (i === timeline.length - 1 || currentTime < timeline[i + 1].start);
+              const left = (seg.start / totalDuration) * 100;
+              const nextStart = timeline[i + 1]?.start ?? totalDuration;
+              const width = ((nextStart - seg.start) / totalDuration) * 100;
+              const isActive = currentTime >= seg.start && currentTime < nextStart;
+              const colors = { pulse: "rgba(74,222,128,0.12)", sequence: "rgba(74,222,128,0.22)", hold: "rgba(251,146,60,0.18)" };
+              const borderColors = { pulse: "rgba(74,222,128,0.18)", sequence: "rgba(74,222,128,0.32)", hold: "rgba(251,146,60,0.28)" };
               return (
-                <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ height: 3, borderRadius: 2, background: isActiveSeg ? activeColor : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
-                  <div style={{ fontSize: 8, color: isActiveSeg ? activeColor : "rgba(255,255,255,0.2)", marginTop: 4, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.05em", textTransform: "uppercase", transition: "color 0.3s" }}>{seg.label || SEGMENT_LABELS[seg.type] || ""}</div>
+                <div key={i} style={{
+                  position: "absolute", left: `${left}%`, width: `${width}%`, height: "100%", borderRadius: 4,
+                  background: isActive ? (colors[seg.type] || "rgba(74,222,128,0.12)") : "rgba(255,255,255,0.025)",
+                  border: `1px solid ${isActive ? (borderColors[seg.type] || "rgba(74,222,128,0.18)") : "rgba(255,255,255,0.035)"}`,
+                  transition: "background 0.3s", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{
+                    fontSize: 8, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.04em",
+                    color: isActive ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.13)",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 3px",
+                  }}>{seg.label || ""}</span>
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* Progress bar */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden", cursor: "pointer" }} onClick={seekToProgress}>
-            <div style={{ width: `${progress}%`, height: "100%", background: activeColor, borderRadius: 2, transition: "width 0.2s" }} />
+          <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, cursor: "pointer" }} onClick={seekToProgress}>
+            <div style={{ width: `${progress}%`, height: "100%", borderRadius: 2, background: "rgba(74,222,128,0.6)", transition: "width 0.1s linear" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.22)", fontFamily: "'JetBrains Mono',monospace" }}>
             <span>{time.elapsed}</span>
             <span>{time.total}</span>
           </div>
         </div>
+
+        {/* Play controls */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 36 }}>
           <button onClick={() => seek(-10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>-10</button>
-          <button onClick={togglePlay} style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${activeColor}30`, background: `${activeColor}0D`, color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
+          <button onClick={togglePlay} style={{ width: 60, height: 60, borderRadius: "50%", border: "2px solid rgba(74,222,128,0.2)", background: "rgba(74,222,128,0.06)", color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
           <button onClick={() => seek(10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>+10</button>
         </div>
       </div>
