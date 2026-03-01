@@ -1,24 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import GenArt from "./GenArt";
 import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
+import { useBreathTimeline } from "../hooks/useBreathTimeline";
+import BreathCircle from "./BreathCircle";
+import PhaseDots from "./PhaseDots";
 import { catLabel } from "../data/practices";
 
-const PHASES = ["вдох", "задержка", "выдох", "задержка"];
 const MIN_SCALE = 0.78;
-const MAX_SCALE = 1.18;
-const RANGE = MAX_SCALE - MIN_SCALE;
-
-function getCircleScale(phaseIdx, phaseDuration, count) {
-  if (phaseDuration === 0) return phaseIdx <= 1 ? MAX_SCALE : MIN_SCALE;
-  const progress = (phaseDuration - count) / phaseDuration;
-  switch (phaseIdx) {
-    case 0: return MIN_SCALE + progress * RANGE;
-    case 1: return MAX_SCALE;
-    case 2: return MAX_SCALE - progress * RANGE;
-    case 3: return MIN_SCALE;
-    default: return 1;
-  }
-}
+const RANGE = 1.18 - MIN_SCALE;
 
 const Player = ({ p, onClose }) => {
   const [playing, setPlaying] = useState(false);
@@ -27,20 +16,10 @@ const Player = ({ p, onClose }) => {
   const [audioError, setAudioError] = useState(false);
   const audioRef = useRef(null);
   const hasAudio = !!p.audioUrl;
+  const [currentTime, setCurrentTime] = useState(0);
 
-  const pattern = p.pattern || [4, 4, 4, 4];
-  const hasPattern = pattern.some(v => v > 0);
-  const initPhase = () => { let i = 0; while (pattern[i] === 0 && i < 4) i++; return i; };
-
-  const [phaseIdx, setPhaseIdx] = useState(initPhase);
-  const [count, setCount] = useState(() => pattern[initPhase()]);
-
-  const nextPhase = useCallback((current) => {
-    let next = (current + 1) % 4;
-    let safety = 0;
-    while (pattern[next] === 0 && safety < 4) { next = (next + 1) % 4; safety++; }
-    return next;
-  }, [pattern]);
+  // Timeline-driven breathing visualization
+  const breath = useBreathTimeline(p.breathPattern || p.pattern, currentTime);
 
   // --- Audio setup ---
   useEffect(() => {
@@ -101,6 +80,7 @@ const Player = ({ p, onClose }) => {
     const onTimeUpdate = () => {
       if (audio.duration && audio.duration > 0) {
         setProgress((audio.currentTime / audio.duration) * 100);
+        setCurrentTime(audio.currentTime);
       }
     };
 
@@ -153,24 +133,14 @@ const Player = ({ p, onClose }) => {
     onClose();
   }, [onClose]);
 
-  // Breathing cycle — 1s ticks
+  // currentTime ticker (when no audio — fallback timer)
   useEffect(() => {
-    if (!playing || !hasPattern) return;
+    if (!playing || hasAudio) return;
     const iv = setInterval(() => {
-      setCount(prev => {
-        if (prev <= 1) {
-          setPhaseIdx(current => {
-            const next = nextPhase(current);
-            setTimeout(() => setCount(pattern[next]), 0);
-            return next;
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      setCurrentTime(prev => prev + 0.1);
+    }, 100);
     return () => clearInterval(iv);
-  }, [playing, hasPattern, pattern, nextPhase]);
+  }, [playing, hasAudio]);
 
   // Session progress (only when NO audio — fallback timer)
   useEffect(() => {
@@ -198,12 +168,7 @@ const Player = ({ p, onClose }) => {
   };
   const time = getTimeDisplay();
 
-  const phaseName = PHASES[phaseIdx];
-  const phaseDuration = pattern[phaseIdx];
-
-  const circleScale = hasPattern ? getCircleScale(phaseIdx, phaseDuration, count) : 1;
-  const glowOpacity = hasPattern ? 0.25 + ((circleScale - MIN_SCALE) / RANGE) * 0.45 : undefined;
-  const circleOpacity = hasPattern ? 0.6 + ((circleScale - MIN_SCALE) / RANGE) * 0.4 : undefined;
+  const glowOpacity = 0.25 + ((breath.scale - MIN_SCALE) / RANGE) * 0.45;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#060608", display: "flex", flexDirection: "column", animation: "fadeIn 0.5s ease", overflow: "hidden" }}>
@@ -217,10 +182,9 @@ const Player = ({ p, onClose }) => {
         width: 350, height: 350, borderRadius: "50%",
         background: `radial-gradient(circle,${p.accentColor}16,transparent 70%)`,
         filter: "blur(50px)",
-        ...(hasPattern
-          ? { transform: `translate(-50%,-50%) scale(${circleScale})`, opacity: glowOpacity, transition: "transform 1s linear, opacity 1s linear" }
-          : { animation: "breatheGlow 6s ease-in-out infinite" }
-        )
+        transform: `translate(-50%,-50%) scale(${breath.scale})`,
+        opacity: glowOpacity,
+        transition: "transform 0.15s linear, opacity 0.15s linear",
       }} />
 
       {/* Header */}
@@ -240,32 +204,19 @@ const Player = ({ p, onClose }) => {
         </div>
       )}
 
-      {/* Breathing circle — synced */}
+      {/* Breathing circle — timeline-driven */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-        <div style={{
-          width: 160, height: 160, borderRadius: "50%",
-          background: `radial-gradient(circle at 40% 35%, ${p.accentColor}28, ${p.color}12)`,
-          boxShadow: `0 0 80px ${p.accentColor}0D`,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          border: `1px solid ${p.accentColor}1A`,
-          ...(hasPattern
-            ? { transform: `scale(${circleScale})`, opacity: circleOpacity, transition: "transform 1s linear, opacity 1s linear" }
-            : { animation: "breatheCircle 6s ease-in-out infinite" }
-          )
-        }}>
-          {hasPattern && count > 0 && (
-            <span key={count} style={{ fontSize: 42, fontWeight: 300, color: "rgba(255,255,255,0.75)", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, animation: "countPop 0.3s ease-out" }}>{count}</span>
-          )}
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: hasPattern && count > 0 ? 6 : 0, transition: "opacity 0.3s" }}>{phaseName}</span>
+        <div style={{ position: "relative", width: 160, height: 160, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <BreathCircle scale={breath.scale} color={p.color} accentColor={p.accentColor} size={160} />
+          <div style={{ position: "absolute", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
+            {breath.count > 0 && (
+              <span key={breath.count} style={{ fontSize: 42, fontWeight: 300, color: "rgba(255,255,255,0.75)", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, animation: "countPop 0.3s ease-out" }}>{breath.count}</span>
+            )}
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: breath.count > 0 ? 6 : 0, transition: "opacity 0.3s" }}>{breath.label}</span>
+          </div>
         </div>
 
-        {hasPattern && phaseDuration > 0 && (
-          <div style={{ display: "flex", gap: 6, marginTop: 20 }}>
-            {Array.from({ length: phaseDuration }, (_, i) => (
-              <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < count ? p.accentColor : `${p.accentColor}25`, transition: "background 0.3s" }} />
-            ))}
-          </div>
-        )}
+        <PhaseDots phases={breath.phases} phaseIndex={breath.phaseIndex} accentColor={p.accentColor} />
       </div>
 
       {/* Controls */}
