@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
 import { useBreathTimeline } from "../hooks/useBreathTimeline";
 import BreathCircle from "./BreathCircle";
-import PhaseDots from "./PhaseDots";
 import AnimatedGenArt from "./AnimatedGenArt";
 import { catLabel } from "../data/practices";
 
-const HOLD_COLOR = "#FB923C";
+const HOLD_COLOR = "#DCDCE6";
 
 const Player = ({ p, onClose }) => {
   const [playing, setPlaying] = useState(false);
@@ -193,14 +192,6 @@ const Player = ({ p, onClose }) => {
   const isHold = breath.segmentType === "hold";
   const accentHex = isHold ? HOLD_COLOR : p.accentColor;
 
-  // Timeline segments (only for new timeline format with >1 segments)
-  const bp = p.breathPattern || p.pattern;
-  const timeline = useMemo(() => {
-    if (!bp || Array.isArray(bp)) return null;
-    if (bp.timeline && bp.timeline.length > 1) return bp.timeline;
-    return null;
-  }, [bp]);
-
   const totalDuration = useMemo(() => {
     if (hasAudio && audioRef.current && audioRef.current.duration > 0) return audioRef.current.duration;
     return p.durationSec || 600;
@@ -240,65 +231,10 @@ const Player = ({ p, onClose }) => {
       }}>
         {/* Breath circle — zIndex: 2 */}
         <BreathCircle scale={breath.scale} accentColor={accentHex} size={250} />
-
-        {/* Hold countdown — absolute center of circle, like prototype */}
-        {isHold && breath.count > 0 && (
-          <div style={{
-            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -55%)",
-            fontSize: 42, fontWeight: 700, color: "rgba(251, 146, 60, 0.7)",
-            fontFamily: "'JetBrains Mono',monospace", zIndex: 3,
-          }}>
-            {breath.count}
-          </div>
-        )}
-
-        {/* Phase label — BELOW circle, marginTop: -16, like prototype */}
-        <div style={{
-          marginTop: -16, minHeight: 24, position: "relative", zIndex: 3,
-          fontSize: 14, fontWeight: 500, letterSpacing: "0.08em",
-          color: isHold ? "rgba(251, 146, 60, 0.7)" : "rgba(74, 222, 128, 0.65)",
-          fontFamily: "'JetBrains Mono',monospace",
-          transition: "color 0.3s", textAlign: "center",
-        }}>
-          {isHold ? "задержка" : (breath.label || "")}
-        </div>
-
-        {/* Phase dots — below label */}
-        <div style={{ marginTop: 12, minHeight: 12, position: "relative", zIndex: 3 }}>
-          <PhaseDots phases={breath.phases} phaseIndex={breath.phaseIndex} />
-        </div>
       </div>
 
       {/* Controls — zIndex: 3 */}
       <div style={{ padding: "0 24px 56px", position: "relative", zIndex: 3 }}>
-        {/* Timeline segment bar — like prototype TimelineBar, only for new timeline format */}
-        {timeline && (
-          <div style={{ position: "relative", height: 24, marginBottom: 4 }}>
-            {timeline.map((seg, i) => {
-              const left = (seg.start / totalDuration) * 100;
-              const nextStart = timeline[i + 1]?.start ?? totalDuration;
-              const width = ((nextStart - seg.start) / totalDuration) * 100;
-              const isActive = currentTime >= seg.start && currentTime < nextStart;
-              const colors = { pulse: "rgba(74,222,128,0.12)", sequence: "rgba(74,222,128,0.22)", hold: "rgba(251,146,60,0.18)" };
-              const borderColors = { pulse: "rgba(74,222,128,0.18)", sequence: "rgba(74,222,128,0.32)", hold: "rgba(251,146,60,0.28)" };
-              return (
-                <div key={i} style={{
-                  position: "absolute", left: `${left}%`, width: `${width}%`, height: "100%", borderRadius: 4,
-                  background: isActive ? (colors[seg.type] || "rgba(74,222,128,0.12)") : "rgba(255,255,255,0.025)",
-                  border: `1px solid ${isActive ? (borderColors[seg.type] || "rgba(74,222,128,0.18)") : "rgba(255,255,255,0.035)"}`,
-                  transition: "background 0.3s", display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <span style={{
-                    fontSize: 8, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "0.04em",
-                    color: isActive ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.13)",
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 3px",
-                  }}>{seg.label || ""}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         {/* Progress bar */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, cursor: "pointer" }} onClick={seekToProgress}>
