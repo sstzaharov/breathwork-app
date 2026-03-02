@@ -237,8 +237,10 @@ const Player = ({ p, onClose }) => {
       <div style={{ padding: "0 24px 56px", position: "relative", zIndex: 3 }}>
         {/* Progress bar */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, cursor: "pointer" }} onClick={seekToProgress}>
-            <div style={{ width: `${progress}%`, height: "100%", borderRadius: 2, background: "rgba(74,222,128,0.6)", transition: "width 0.1s linear" }} />
+          <div style={{ padding: "20px 0", cursor: "pointer" }} onClick={seekToProgress}>
+            <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2 }}>
+              <div style={{ width: `${progress}%`, height: "100%", borderRadius: 2, background: "rgba(74,222,128,0.6)", transition: "width 0.1s linear" }} />
+            </div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.22)", fontFamily: "'JetBrains Mono',monospace" }}>
             <span>{time.elapsed}</span>
