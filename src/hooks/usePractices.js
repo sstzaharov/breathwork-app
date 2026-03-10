@@ -5,7 +5,7 @@ import { fetchPractices } from '../lib/practices-service';
 import { practices as hardcodedPractices } from '../data/practices';
 
 export function usePractices() {
-  const [practices, setPractices] = useState(hardcodedPractices);
+  const [practices, setPractices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -15,12 +15,14 @@ export function usePractices() {
     async function load() {
       try {
         const data = await fetchPractices();
-        if (!cancelled && data.length > 0) {
-          setPractices(data);
+        if (!cancelled) {
+          setPractices(data.length > 0 ? data : hardcodedPractices);
         }
-        // Если data пустой — остаёмся на хардкоде
       } catch (err) {
-        if (!cancelled) setError(err);
+        if (!cancelled) {
+          setError(err);
+          setPractices(hardcodedPractices);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

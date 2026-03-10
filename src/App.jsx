@@ -17,7 +17,7 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) === "1"; } catch { return false; }
   });
-  const { practices } = usePractices();
+  const { practices, loading } = usePractices();
   const [currentUser, setCurrentUser] = useState(null);
   const [sel, setSel] = useState(null);
   const [play, setPlay] = useState(null);
@@ -40,6 +40,12 @@ export default function App() {
       }
     }
   }, []);
+
+  if (loading && practices.length === 0) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0A0A0F", maxWidth: 430, margin: "0 auto" }} />
+    );
+  }
 
   const h = new Date().getHours();
   const tod = h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night";
