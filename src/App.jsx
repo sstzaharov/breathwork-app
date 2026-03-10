@@ -66,7 +66,7 @@ export default function App() {
             <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg,${rec.color},${rec.accentColor}50)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>S</div>
           </div>
           <h1 style={{ fontSize: 25, fontWeight: 700, color: "#F5F5F5", marginBottom: 3, fontFamily: "'Outfit',sans-serif" }}>{greet}</h1>
-          <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.32)" }}>Когда медитировать не получается — дыши</p>
+          <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.32)" }}>В любой непонятной ситуации — дыши</p>
         </div>
 
         {/* Recommended */}
