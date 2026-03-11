@@ -1,12 +1,13 @@
 export async function sharePractice(practice, showToastCallback) {
   const shareUrl = `https://t.me/breathwork_with_stas_bot/breathwork?startapp=practice_${practice.id}`;
-  const shareText = `${practice.title} — дыхательная практика, ${practice.duration}`;
+  const shareTitle = `${practice.title} — Breathwork with Stas`;
+  const shareText = `${practice.title} · ${practice.duration}\n${practice.science}`;
 
   // Priority 1: Web Share API — native share sheet (iOS/Android)
   if (navigator.share) {
     try {
       await navigator.share({
-        title: practice.title,
+        title: shareTitle,
         text: shareText,
         url: shareUrl,
       });
