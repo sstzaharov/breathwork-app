@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { PlayIcon, PauseIcon, CloseIcon } from "./Icons";
+import { PlayIcon, PauseIcon, CloseIcon, HeartIcon, ShareIcon } from "./Icons";
 import { useBreathTimeline } from "../hooks/useBreathTimeline";
 import BreathCircle from "./BreathCircle";
 import AnimatedGenArt from "./AnimatedGenArt";
@@ -7,7 +7,7 @@ import { catLabel } from "../data/practices";
 
 const HOLD_COLOR = "#DCDCE6";
 
-const Player = ({ p, onClose }) => {
+const Player = ({ p, onClose, isFavorite, onToggleFavorite, onShare }) => {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [audioReady, setAudioReady] = useState(false);
@@ -249,10 +249,12 @@ const Player = ({ p, onClose }) => {
         </div>
 
         {/* Play controls */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 36 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
+          <button onClick={onShare} style={{ width: 38, height: 38, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><ShareIcon size={18} color="rgba(255,255,255,0.45)" /></button>
           <button onClick={() => seek(-10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>-10</button>
           <button onClick={togglePlay} style={{ width: 60, height: 60, borderRadius: "50%", border: "2px solid rgba(74,222,128,0.2)", background: "rgba(74,222,128,0.06)", color: "#F5F5F5", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? <PauseIcon size={20} color="#F5F5F5" /> : <PlayIcon size={20} color="#F5F5F5" />}</button>
           <button onClick={() => seek(10)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace" }}>+10</button>
+          <button onClick={onToggleFavorite} style={{ width: 38, height: 38, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><HeartIcon size={18} filled={isFavorite} color={isFavorite ? "#FF6B8A" : "rgba(255,255,255,0.45)"} /></button>
         </div>
       </div>
     </div>

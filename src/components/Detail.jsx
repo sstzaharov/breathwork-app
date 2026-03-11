@@ -1,9 +1,11 @@
 import GenArt from "./GenArt";
 import Dots from "./Dots";
-import { PlayIcon } from "./Icons";
+import { PlayIcon, HeartIcon, ShareIcon, BackArrowIcon } from "./Icons";
 import { catLabel, ctxLabel } from "../data/practices";
 
-const Detail = ({ p, onClose, onPlay }) => (
+const iconBtnStyle = { width: 38, height: 38, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 };
+
+const Detail = ({ p, onClose, onPlay, isFavorite, onToggleFavorite, onShare }) => (
   <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", animation: "slideUp 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(10px)" }} />
     <div style={{ position: "relative", marginTop: "auto", background: "#0A0A0F", borderRadius: "24px 24px 0 0", maxHeight: "88vh", overflowY: "auto", overflowX: "hidden" }}>
@@ -11,7 +13,13 @@ const Detail = ({ p, onClose, onPlay }) => (
         <GenArt type={p.genType} color={p.color} accent={p.accentColor} w={430} h={180} seed={p.id*13+7} />
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: "linear-gradient(transparent, #0A0A0F)" }} />
         <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 20, left: 16, width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.35)", backdropFilter: "blur(8px)", color: "rgba(255,255,255,0.7)", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>←</button>
+        <div style={{ position: "absolute", top: 16, left: 16, right: 16, zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <button onClick={onClose} style={iconBtnStyle}><BackArrowIcon size={18} color="rgba(255,255,255,0.7)" /></button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={onToggleFavorite} style={iconBtnStyle}><HeartIcon size={18} filled={isFavorite} color={isFavorite ? "#FF6B8A" : "rgba(255,255,255,0.5)"} /></button>
+            <button onClick={onShare} style={iconBtnStyle}><ShareIcon size={18} color="rgba(255,255,255,0.5)" /></button>
+          </div>
+        </div>
       </div>
       <div style={{ padding: "0 24px 48px" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>

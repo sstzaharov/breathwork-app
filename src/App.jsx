@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { catLabel } from "./data/practices";
 import { usePractices } from "./hooks/usePractices";
 import { upsertUser } from "./lib/user-service";
-import { PlayIcon } from "./components/Icons";
+import { sharePractice } from "./lib/share";
+import { PlayIcon, HeartIcon } from "./components/Icons";
 import GenArt from "./components/GenArt";
 import Dots from "./components/Dots";
 import Card from "./components/Card";
 import Detail from "./components/Detail";
 import Player from "./components/Player";
 import Onboarding from "./components/Onboarding";
+import FavoritesScreen from "./components/FavoritesScreen";
+import ShareToast from "./components/ShareToast";
 import "./styles.css";
 
 const STORAGE_KEY = "bws_onboarded";
@@ -22,6 +25,21 @@ export default function App() {
   const [sel, setSel] = useState(null);
   const [play, setPlay] = useState(null);
   const [filt, setFilt] = useState("all");
+  const [favorites, setFavorites] = useState(new Set());
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const toggleFavorite = useCallback((id) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleShare = useCallback(async (practice) => {
+    await sharePractice(practice, (msg) => setToastMsg(msg));
+  }, []);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -40,6 +58,18 @@ export default function App() {
       }
     }
   }, []);
+
+  // Deep link: open practice from shared link
+  useEffect(() => {
+    if (practices.length === 0) return;
+    const tg = window.Telegram?.WebApp;
+    const startParam = tg?.initDataUnsafe?.start_param;
+    if (startParam && startParam.startsWith('practice_')) {
+      const id = parseInt(startParam.replace('practice_', ''));
+      const practice = practices.find(p => p.id === id);
+      if (practice) setSel(practice);
+    }
+  }, [practices]);
 
   if (loading && practices.length === 0) {
     return (
@@ -69,7 +99,13 @@ export default function App() {
         <div style={{ padding: "52px 20px 0", position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 500 }}>Breathwork with Stas</span>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg,${rec.color},${rec.accentColor}50)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>S</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button onClick={() => setShowFavorites(true)} style={{ position: "relative", width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                <HeartIcon size={14} filled color="rgba(255,255,255,0.4)" />
+                {favorites.size > 0 && <span style={{ position: "absolute", top: -3, right: -3, width: 14, height: 14, borderRadius: "50%", background: "#FF6B8A", border: "2px solid #0A0A0F", fontSize: 8, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{favorites.size}</span>}
+              </button>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg,${rec.color},${rec.accentColor}50)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>S</div>
+            </div>
           </div>
           <h1 style={{ fontSize: 25, fontWeight: 700, color: "#F5F5F5", marginBottom: 3, fontFamily: "'Outfit',sans-serif" }}>{greet}</h1>
           <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.32)" }}>В любой непонятной ситуации — дыши</p>
@@ -112,8 +148,10 @@ export default function App() {
       </div>
 
       {!onboarded && <Onboarding onComplete={completeOnboarding} />}
-      {sel && !play && <Detail p={sel} onClose={() => setSel(null)} onPlay={() => { setPlay(sel); setSel(null); }} />}
-      {play && <Player p={play} onClose={() => setPlay(null)} />}
+      {showFavorites && !sel && !play && <FavoritesScreen favorites={favorites} practices={practices} onClose={() => setShowFavorites(false)} onSelect={(p) => { setSel(p); }} onPlay={setPlay} />}
+      {sel && !play && <Detail p={sel} onClose={() => setSel(null)} onPlay={() => { setPlay(sel); setSel(null); }} isFavorite={favorites.has(sel.id)} onToggleFavorite={() => toggleFavorite(sel.id)} onShare={() => handleShare(sel)} />}
+      {play && <Player p={play} onClose={() => setPlay(null)} isFavorite={favorites.has(play.id)} onToggleFavorite={() => toggleFavorite(play.id)} onShare={() => handleShare(play)} />}
+      {toastMsg && <ShareToast message={toastMsg} onDone={() => setToastMsg(null)} />}
     </>
   );
 }
