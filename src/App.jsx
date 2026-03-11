@@ -143,12 +143,12 @@ export default function App() {
 
         {/* Cards */}
         <div style={{ padding: "14px 20px 40px", display: "flex", flexDirection: "column", gap: 12, position: "relative", zIndex: 1 }}>
-          {list.map((p, i) => <Card key={p.id} p={p} i={i} onClick={setSel} onPlay={setPlay} />)}
+          {list.map((p, i) => <Card key={p.id} p={p} i={i} onClick={setSel} onPlay={setPlay} isFav={favorites.has(p.id)} onToggleFav={toggleFavorite} />)}
         </div>
       </div>
 
       {!onboarded && <Onboarding onComplete={completeOnboarding} />}
-      {showFavorites && !sel && !play && <FavoritesScreen favorites={favorites} practices={practices} onClose={() => setShowFavorites(false)} onSelect={(p) => { setSel(p); }} onPlay={setPlay} />}
+      {showFavorites && !sel && !play && <FavoritesScreen favorites={favorites} practices={practices} onClose={() => setShowFavorites(false)} onSelect={(p) => { setSel(p); }} onPlay={setPlay} onToggleFav={toggleFavorite} />}
       {sel && !play && <Detail p={sel} onClose={() => setSel(null)} onPlay={() => { setPlay(sel); setSel(null); }} isFavorite={favorites.has(sel.id)} onToggleFavorite={() => toggleFavorite(sel.id)} onShare={() => handleShare(sel)} />}
       {play && <Player p={play} onClose={() => setPlay(null)} isFavorite={favorites.has(play.id)} onToggleFavorite={() => toggleFavorite(play.id)} onShare={() => handleShare(play)} />}
       {toastMsg && <ShareToast message={toastMsg} onDone={() => setToastMsg(null)} />}

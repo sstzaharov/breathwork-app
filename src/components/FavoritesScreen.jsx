@@ -1,7 +1,7 @@
 import Card from "./Card";
 import { BackArrowIcon, HeartIcon } from "./Icons";
 
-const FavoritesScreen = ({ favorites, practices, onClose, onSelect, onPlay }) => {
+const FavoritesScreen = ({ favorites, practices, onClose, onSelect, onPlay, onToggleFav }) => {
   const favPractices = practices.filter(p => favorites.has(p.id));
 
   return (
@@ -26,7 +26,7 @@ const FavoritesScreen = ({ favorites, practices, onClose, onSelect, onPlay }) =>
         {favPractices.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {favPractices.map((p, i) => (
-              <Card key={p.id} p={p} i={i} onClick={onSelect} onPlay={onPlay} />
+              <Card key={p.id} p={p} i={i} onClick={onSelect} onPlay={onPlay} isFav={favorites.has(p.id)} onToggleFav={onToggleFav} />
             ))}
           </div>
         ) : (

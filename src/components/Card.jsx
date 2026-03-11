@@ -1,15 +1,16 @@
 import { useState } from "react";
 import GenArt from "./GenArt";
 import Dots from "./Dots";
-import { PlayIcon } from "./Icons";
+import { PlayIcon, HeartIcon } from "./Icons";
 import { catLabel, ctxLabel } from "../data/practices";
 
-const Card = ({ p, i, onClick, onPlay }) => {
+const Card = ({ p, i, onClick, onPlay, isFav, onToggleFav }) => {
   const [hov, setHov] = useState(false);
   return (
     <div onClick={() => onClick(p)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ background: `linear-gradient(145deg, ${p.color}12, ${p.color}28)`, borderRadius: 20, padding: "22px 20px", cursor: "pointer", position: "relative", overflow: "hidden", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)", transform: hov?"translateY(-3px) scale(1.01)":"translateY(0)", border: `1px solid ${p.color}22`, minHeight: 155, animation: `fadeSlideIn 0.5s ease ${i*0.08}s both` }}>
       <GenArt type={p.genType} color={p.color} accent={p.accentColor} w={390} h={155} seed={p.id*7+3} />
+      {onToggleFav && <button onClick={(e) => { e.stopPropagation(); onToggleFav(p.id); }} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}><HeartIcon size={15} filled={isFav} color={isFav ? "#FF6B8A" : "rgba(255,255,255,0.45)"} /></button>}
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>

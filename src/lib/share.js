@@ -2,27 +2,38 @@ export async function sharePractice(practice, showToastCallback) {
   const shareUrl = `https://t.me/breathwork_with_stas_bot/breathwork?startapp=practice_${practice.id}`;
   const shareText = `${practice.title} — дыхательная практика, ${practice.duration}`;
 
-  const tg = window.Telegram?.WebApp;
+  // Priority 1: Web Share API — native share sheet (iOS/Android)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: practice.title,
+        text: shareText,
+        url: shareUrl,
+      });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // user cancelled
+    }
+  }
 
+  // Priority 2: Telegram share (if Web Share API unavailable)
+  const tg = window.Telegram?.WebApp;
   if (tg) {
-    // Telegram native share picker
-    tg.openTelegramLink(
-      `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`
-    );
-  } else if (navigator.share) {
-    // Web Share API (iOS/Android native sheet)
     try {
-      await navigator.share({ title: practice.title, text: shareText, url: shareUrl });
+      tg.openTelegramLink(
+        `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`
+      );
+      return;
     } catch (e) {
-      // user cancelled share — do nothing
+      // fallback below
     }
-  } else {
-    // Clipboard fallback
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      showToastCallback?.('Ссылка скопирована');
-    } catch (e) {
-      // ignore
-    }
+  }
+
+  // Priority 3: Clipboard fallback
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    showToastCallback?.('Ссылка скопирована');
+  } catch (e) {
+    // ignore
   }
 }
