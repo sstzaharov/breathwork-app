@@ -126,7 +126,10 @@ export default function App() {
                 </div>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", fontStyle: "italic", lineHeight: 1.4 }}>⚡ {rec.science}</p>
               </div>
-              <div onClick={(e) => { e.stopPropagation(); setPlay(rec); }} style={{ width: 48, height: 48, borderRadius: "50%", background: rec.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#0A0A0F", flexShrink: 0, marginLeft: 14, marginTop: 10, boxShadow: `0 0 30px ${rec.accentColor}30`, cursor: "pointer" }}><PlayIcon size={18} color="#0A0A0F" /></div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, flexShrink: 0, marginLeft: 14, alignSelf: "stretch" }}>
+                <button onClick={(e) => { e.stopPropagation(); toggleFavorite(rec.id); }} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><HeartIcon size={15} filled={favorites.has(rec.id)} color={favorites.has(rec.id) ? "#FF6B8A" : "rgba(255,255,255,0.45)"} /></button>
+                <div onClick={(e) => { e.stopPropagation(); setPlay(rec); }} style={{ width: 48, height: 48, borderRadius: "50%", background: rec.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#0A0A0F", boxShadow: `0 0 30px ${rec.accentColor}30`, cursor: "pointer" }}><PlayIcon size={18} color="#0A0A0F" /></div>
+              </div>
             </div>
           </div>
         </div>
